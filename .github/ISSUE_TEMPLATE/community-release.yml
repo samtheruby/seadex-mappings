@@ -1,0 +1,63 @@
+name: Community Release
+description: Submit a high-quality anime release not indexed by Seadex
+labels: ["community-release"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Submit a release that Seadex doesn't index. A maintainer will review and apply the `approved` label to trigger automatic import.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Release type
+      options:
+        - TV Show
+        - Movie
+    validations:
+      required: true
+
+  - type: input
+    id: nyaa_link
+    attributes:
+      label: Nyaa link
+      placeholder: "https://nyaa.si/view/1234567"
+    validations:
+      required: true
+
+  - type: input
+    id: tvdb_id
+    attributes:
+      label: TVDB ID
+      description: "Required for TV shows. Find at thetvdb.com — use the numeric ID from the URL."
+      placeholder: "267440"
+
+  - type: input
+    id: tmdb_id
+    attributes:
+      label: TMDB ID
+      description: "Required for movies. Find at themoviedb.org — use the numeric ID from the URL."
+      placeholder: "12345"
+
+  - type: input
+    id: season
+    attributes:
+      label: Season number
+      description: TV shows only. Defaults to 1 if left blank.
+      placeholder: "1"
+
+  - type: checkboxes
+    id: flags
+    attributes:
+      label: Flags
+      options:
+        - label: Dual audio
+        - label: Incomplete series
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything else the reviewer should know (why this release is notable, source info, etc.)
+    validations:
+      required: false

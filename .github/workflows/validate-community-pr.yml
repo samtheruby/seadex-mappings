@@ -1,0 +1,35 @@
+name: validate-community-pr
+
+on:
+  pull_request:
+    paths:
+      - "community/**"
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate changed community files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch origin "$BASE_SHA" --depth=1
+          mapfile -t FILES < <(git diff --name-only --diff-filter=AM "$BASE_SHA" "$HEAD_SHA" -- 'community/*.json')
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "No community files changed."
+            exit 0
+          fi
+          printf 'Validating:\n'
+          printf '  %s\n' "${FILES[@]}"
+          python3 scripts/validate_community.py "${FILES[@]}"

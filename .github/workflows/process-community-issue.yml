@@ -1,0 +1,72 @@
+name: process-community-issue
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  process:
+    if: |
+      github.event.label.name == 'approved' &&
+      contains(github.event.issue.labels.*.name, 'community-release')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install httpx
+
+      - name: Process issue
+        id: process
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          TVDB_API_KEY: ${{ secrets.TVDB_API_KEY }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: |
+          python3 scripts/process_community_issue.py
+
+      - name: Commit result
+        run: |
+          git config user.name "seadex-community-bot"
+          git config user.email "bot@seadex-mappings"
+          git add community/
+          if git diff --cached --quiet; then
+            echo "Nothing to commit (entry may already exist)"
+          else
+            git commit -m "community: add release from issue #${{ github.event.issue.number }}"
+            git push
+          fi
+
+      - name: Comment on issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let msg;
+            try {
+              msg = fs.readFileSync('/tmp/community_result.txt', 'utf8');
+            } catch {
+              msg = 'Processing complete.';
+            }
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: msg,
+            });
+            github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed',
+            });

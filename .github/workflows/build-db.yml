@@ -1,0 +1,51 @@
+name: build-db
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "seadex/**"
+      - "community/**"
+      - "scripts/build_db.py"
+      - ".github/workflows/build-db.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-db
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build databases
+        run: python3 scripts/build_db.py
+
+      - name: Sanity check outputs
+        run: |
+          test -s seadex.db
+          test -s community.db
+          sqlite3 seadex.db "SELECT count(*) FROM releases;"
+          sqlite3 community.db "SELECT count(*) FROM community_releases;"
+
+      - name: Publish to db-latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh release view db-latest >/dev/null 2>&1; then
+            gh release create db-latest \
+              --title "Latest databases" \
+              --notes "Rolling release. Assets replaced on every push to main." \
+              seadex.db community.db
+          else
+            gh release upload db-latest seadex.db community.db --clobber
+          fi
