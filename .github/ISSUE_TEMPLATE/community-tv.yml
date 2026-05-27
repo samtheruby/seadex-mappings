@@ -64,7 +64,7 @@ body:
     id: filename
     attributes:
       label: Filename
-      description: "Standardized release name without file extension"
-      placeholder: "Attack.on.Titan.S01.1080p.BluRay.x265-SubsPlease"
+      description: "Required fields: Name.Season.Year.Resolution.ReleaseType.AudioCodec.VideoCodec-Group — optional fields (include if present): INCOMPLETE, Dual-Audio, HDR, BitDepth, YUV444P, VFR"
+      placeholder: "Attack.on.Titan.S01.2013.1080p.BluRay.FLAC.x265-SubsPlease"
     validations:
       required: true

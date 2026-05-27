@@ -18,6 +18,9 @@ REQUIRED_STR = ("filename", "tmdb_tvdb_name", "release_group", "tmdb_type", "pro
 LINK_FIELDS = ("nyaa_link", "nekobt_link")
 VALID_TMDB_TYPES = ("movie", "show")
 VALID_RESOLUTIONS = ("480p", "720p", "1080p", "2160p")
+VALID_RELEASE_TYPES = ("BluRay", "WEB-DL", "Remux", "DVD")
+VALID_VIDEO_CODECS = ("x264", "x265", "H.264", "H.265", "AVC", "HEVC", "AV1")
+VALID_AUDIO_CODECS = ("FLAC", "AAC", "Opus", "AC3", "EAC3", "DTS", "TrueHD", "PCM", "MP3", "Vorbis")
 
 STR_FIELDS = (
     "filename", "tmdb_tvdb_name", "release_group", "tmdb_type", "processed_at",
@@ -26,6 +29,7 @@ STR_FIELDS = (
 INT_FIELDS = ("tvdb_id", "tvdb_season", "tmdb_id")
 
 _SEASON_RE = re.compile(r"\.S\d{2}\.")
+_YEAR_RE = re.compile(r"\.(?:19|20)\d{2}\.")
 _GROUP_UNSAFE_RE = re.compile(r"""[<>:"/\\|?*'`\-]""")
 
 
@@ -37,22 +41,36 @@ def _sanitize_group(group: str) -> str:
 
 def validate_filename(filename: str, tmdb_type: str, release_group: str) -> list[str]:
     errs = []
+
     if " " in filename:
         errs.append("filename must use dots as separators, not spaces")
     if ".." in filename:
         errs.append("filename contains consecutive dots")
 
-    expected_suffix = f"-{_sanitize_group(release_group)}"
-    if not filename.endswith(expected_suffix):
-        errs.append(
-            f"filename must end with -{_sanitize_group(release_group)!r} to match release_group"
-        )
+    # Wrap with dots for cleaner boundary matching (year, season checks)
+    padded = f".{filename}."
+
+    if tmdb_type == "show" and not _SEASON_RE.search(padded):
+        errs.append("TV filename must contain a season tag (e.g. .S01.)")
+
+    if not _YEAR_RE.search(padded):
+        errs.append("filename must contain a year (e.g. 2023)")
 
     if not any(res in filename for res in VALID_RESOLUTIONS):
         errs.append(f"filename must contain a resolution ({', '.join(VALID_RESOLUTIONS)})")
 
-    if tmdb_type == "show" and not _SEASON_RE.search(f".{filename}."):
-        errs.append("TV filename must contain a season tag (e.g. .S01.)")
+    if not any(rt in filename for rt in VALID_RELEASE_TYPES):
+        errs.append(f"filename must contain a release type ({', '.join(VALID_RELEASE_TYPES)})")
+
+    if not any(vc in filename for vc in VALID_VIDEO_CODECS):
+        errs.append(f"filename must contain a video codec ({', '.join(VALID_VIDEO_CODECS)})")
+
+    if not any(ac in filename for ac in VALID_AUDIO_CODECS):
+        errs.append(f"filename must contain an audio codec ({', '.join(VALID_AUDIO_CODECS)})")
+
+    expected_suffix = f"-{_sanitize_group(release_group)}"
+    if not filename.endswith(expected_suffix):
+        errs.append(f"filename must end with `{expected_suffix}` to match the release group")
 
     return errs
 
