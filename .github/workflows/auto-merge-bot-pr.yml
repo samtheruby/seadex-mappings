@@ -11,13 +11,16 @@ permissions:
 
 jobs:
   merge:
-    if: startsWith(github.head_ref, 'bot/ingest-')
+    if: |
+      startsWith(github.head_ref, 'bot/ingest-') &&
+      github.event.pull_request.user.login == 'samtheruby'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Merge bot PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr merge "${{ github.event.pull_request.number }}" \
-            --squash \
+            --squash --auto \
             --repo "${{ github.repository }}"
