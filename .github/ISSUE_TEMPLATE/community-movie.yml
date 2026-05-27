@@ -1,0 +1,62 @@
+name: Community Movie Release
+description: Submit an anime movie release not indexed by Seadex
+labels: ["community-release"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Submit a movie release Seadex doesn't index. A maintainer will review and apply the `approved` label to trigger import.
+
+  - type: dropdown
+    id: tracker
+    attributes:
+      label: Tracker
+      options:
+        - Nyaa
+        - NekoBT
+    validations:
+      required: true
+
+  - type: input
+    id: torrent_id
+    attributes:
+      label: Torrent ID
+      description: "Nyaa: the number from nyaa.si/view/**1234567**. NekoBT: the number from nekobt.to/torrents/**1234567**"
+      placeholder: "1234567"
+    validations:
+      required: true
+
+  - type: input
+    id: tmdb_id
+    attributes:
+      label: TMDB ID
+      description: "Numeric ID from the themoviedb.org URL, e.g. themoviedb.org/movie/635302 → 635302"
+      placeholder: "635302"
+    validations:
+      required: true
+
+  - type: input
+    id: tmdb_tvdb_name
+    attributes:
+      label: Movie name
+      description: "Exact title as it appears on TMDB"
+      placeholder: "Demon Slayer -Kimetsu no Yaiba- The Movie: Mugen Train"
+    validations:
+      required: true
+
+  - type: input
+    id: release_group
+    attributes:
+      label: Release group
+      placeholder: "SubsPlease"
+    validations:
+      required: true
+
+  - type: input
+    id: filename
+    attributes:
+      label: Filename
+      description: "Standardized release name without file extension"
+      placeholder: "Demon.Slayer.Mugen.Train.2020.1080p.BluRay.x265-SubsPlease"
+    validations:
+      required: true

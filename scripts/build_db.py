@@ -58,10 +58,7 @@ CREATE INDEX idx_releases_proc     ON releases(processed_at DESC);
 COMMUNITY_SCHEMA = """
 CREATE TABLE community_releases (
     rowid             INTEGER PRIMARY KEY AUTOINCREMENT,
-    nyaa_id           TEXT,
-    info_hash         TEXT,
     nekobt_link       TEXT,
-    tosho_link        TEXT,
     filename          TEXT,
     nyaa_link         TEXT,
     nyaa_download_link TEXT,
@@ -71,7 +68,6 @@ CREATE TABLE community_releases (
     tmdb_id           INTEGER,
     tmdb_type         TEXT,
     tmdb_tvdb_name    TEXT,
-    romaji_name       TEXT,
     processed_at      TEXT
 );
 CREATE INDEX idx_community_tvdb ON community_releases(tvdb_id, tvdb_season);
@@ -91,10 +87,10 @@ RELEASES_COLUMNS = [
 ]
 
 COMMUNITY_COLUMNS = [
-    "nyaa_id", "info_hash", "nekobt_link", "tosho_link",
+    "nekobt_link",
     "filename", "nyaa_link", "nyaa_download_link", "release_group",
     "tvdb_id", "tvdb_season", "tmdb_id", "tmdb_type",
-    "tmdb_tvdb_name", "romaji_name", "processed_at",
+    "tmdb_tvdb_name", "processed_at",
 ]
 
 
@@ -157,7 +153,7 @@ def load_community() -> list[dict]:
 _NYAA_ID_RE = re.compile(r"/view/(\d+)")
 
 def derive_nyaa_fields(obj: dict) -> dict:
-    """Fill nyaa_id and nyaa_download_link from nyaa_link if not already set."""
+    """Fill nyaa_download_link from nyaa_link if not already set."""
     nyaa_link = obj.get("nyaa_link", "")
     if not nyaa_link:
         return obj
@@ -165,13 +161,11 @@ def derive_nyaa_fields(obj: dict) -> dict:
     if not m:
         return obj
     nyaa_id = m.group(1)
-    download_link = f"https://nyaa.si/download/{nyaa_id}.torrent"
-    out = dict(obj)
-    if not out.get("nyaa_id"):
-        out["nyaa_id"] = nyaa_id
-    if not out.get("nyaa_download_link"):
-        out["nyaa_download_link"] = download_link
-    return out
+    if not obj.get("nyaa_download_link"):
+        out = dict(obj)
+        out["nyaa_download_link"] = f"https://nyaa.si/download/{nyaa_id}.torrent"
+        return out
+    return obj
 
 
 def coerce_bool(v) -> int:

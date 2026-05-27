@@ -21,19 +21,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
-        run: pip install httpx
-
       - name: Process issue
-        id: process
         env:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_BODY: ${{ github.event.issue.body }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
-          TVDB_API_KEY: ${{ secrets.TVDB_API_KEY }}
-          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-        run: |
-          python3 scripts/process_community_issue.py
+        run: python3 scripts/process_community_issue.py
 
       - name: Commit result
         run: |
@@ -47,7 +39,8 @@ jobs:
             git push
           fi
 
-      - name: Comment on issue
+      - name: Post result comment
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
@@ -56,15 +49,20 @@ jobs:
             try {
               msg = fs.readFileSync('/tmp/community_result.txt', 'utf8');
             } catch {
-              msg = 'Processing complete.';
+              msg = '❌ Processing failed — check the workflow run for details.';
             }
-            github.rest.issues.createComment({
+            await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
               body: msg,
             });
-            github.rest.issues.update({
+
+      - name: Close issue on success
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,

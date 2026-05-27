@@ -1,0 +1,70 @@
+name: Community TV Release
+description: Submit a TV anime release not indexed by Seadex
+labels: ["community-release"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Submit a TV release Seadex doesn't index. A maintainer will review and apply the `approved` label to trigger import.
+
+  - type: dropdown
+    id: tracker
+    attributes:
+      label: Tracker
+      options:
+        - Nyaa
+        - NekoBT
+    validations:
+      required: true
+
+  - type: input
+    id: torrent_id
+    attributes:
+      label: Torrent ID
+      description: "Nyaa: the number from nyaa.si/view/**1234567**. NekoBT: the number from nekobt.to/torrents/**1234567**"
+      placeholder: "1234567"
+    validations:
+      required: true
+
+  - type: input
+    id: tvdb_id
+    attributes:
+      label: TVDB ID
+      description: "Numeric ID from the thetvdb.com URL, e.g. thetvdb.com/series/attack-on-titan → 267440"
+      placeholder: "267440"
+    validations:
+      required: true
+
+  - type: input
+    id: tvdb_season
+    attributes:
+      label: Season
+      placeholder: "1"
+    validations:
+      required: true
+
+  - type: input
+    id: tmdb_tvdb_name
+    attributes:
+      label: Show name
+      description: "Exact title as it appears on TVDB"
+      placeholder: "Attack on Titan"
+    validations:
+      required: true
+
+  - type: input
+    id: release_group
+    attributes:
+      label: Release group
+      placeholder: "SubsPlease"
+    validations:
+      required: true
+
+  - type: input
+    id: filename
+    attributes:
+      label: Filename
+      description: "Standardized release name without file extension"
+      placeholder: "Attack.on.Titan.S01.1080p.BluRay.x265-SubsPlease"
+    validations:
+      required: true

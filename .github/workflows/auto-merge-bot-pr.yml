@@ -1,0 +1,23 @@
+name: auto-merge-bot-pr
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    if: startsWith(github.head_ref, 'bot/ingest-')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge bot PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge "${{ github.event.pull_request.number }}" \
+            --squash \
+            --repo "${{ github.repository }}"

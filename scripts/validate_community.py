@@ -2,10 +2,10 @@
 """Validate community/*.json files. Exits non-zero on any error.
 
 Each file must be a JSON array of objects. Each object must have:
-  - `filename` (non-empty string)
-  - at least one of: `nyaa_link`, `nekobt_link`, `tosho_link`, `info_hash`
-
-Optional fields are accepted but type-checked when present.
+  - filename, tmdb_tvdb_name, release_group (non-empty strings)
+  - at least one of: nyaa_link, nekobt_link
+  - tmdb_type of 'movie' or 'show'
+  - tvdb_id + tvdb_season (shows) OR tmdb_id (movies)
 """
 from __future__ import annotations
 
@@ -13,13 +13,13 @@ import json
 import sys
 from pathlib import Path
 
-REQUIRED_FILENAME = "filename"
-LINK_FIELDS = ("nyaa_link", "nekobt_link", "tosho_link", "info_hash")
+REQUIRED_STR = ("filename", "tmdb_tvdb_name", "release_group", "tmdb_type", "processed_at")
+LINK_FIELDS = ("nyaa_link", "nekobt_link")
+VALID_TMDB_TYPES = ("movie", "show")
 
 STR_FIELDS = (
-    "filename", "nyaa_id", "info_hash", "nekobt_link", "tosho_link",
-    "nyaa_link", "nyaa_download_link", "release_group",
-    "tmdb_type", "tmdb_tvdb_name", "romaji_name", "processed_at",
+    "filename", "tmdb_tvdb_name", "release_group", "tmdb_type", "processed_at",
+    "nyaa_link", "nyaa_download_link", "nekobt_link",
 )
 INT_FIELDS = ("tvdb_id", "tvdb_season", "tmdb_id")
 
@@ -31,14 +31,25 @@ def validate_obj(path: str, idx: int, obj: dict) -> list[str]:
     if not isinstance(obj, dict):
         return [f"{where}: not a JSON object"]
 
-    fname = obj.get(REQUIRED_FILENAME)
-    if not isinstance(fname, str) or not fname.strip():
-        errs.append(f"{where}: missing or empty `filename`")
+    for field in REQUIRED_STR:
+        val = obj.get(field)
+        if not isinstance(val, str) or not val.strip():
+            errs.append(f"{where}: missing or empty `{field}`")
 
     if not any(obj.get(k) for k in LINK_FIELDS):
-        errs.append(
-            f"{where}: must have at least one of: {', '.join(LINK_FIELDS)}"
-        )
+        errs.append(f"{where}: must have at least one of: {', '.join(LINK_FIELDS)}")
+
+    tmdb_type = obj.get("tmdb_type", "")
+    if tmdb_type not in VALID_TMDB_TYPES:
+        errs.append(f"{where}: `tmdb_type` must be one of {VALID_TMDB_TYPES}, got {tmdb_type!r}")
+    elif tmdb_type == "show":
+        if not isinstance(obj.get("tvdb_id"), int):
+            errs.append(f"{where}: show entries require integer `tvdb_id`")
+        if not isinstance(obj.get("tvdb_season"), int):
+            errs.append(f"{where}: show entries require integer `tvdb_season`")
+    elif tmdb_type == "movie":
+        if not isinstance(obj.get("tmdb_id"), int):
+            errs.append(f"{where}: movie entries require integer `tmdb_id`")
 
     for k in STR_FIELDS:
         if k in obj and obj[k] is not None and not isinstance(obj[k], str):
