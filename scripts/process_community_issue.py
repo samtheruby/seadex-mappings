@@ -21,6 +21,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 COMMUNITY_DIR = REPO_ROOT / "community"
 RESULT_FILE = Path("/tmp/community_result.txt")
 
+VALID_RESOLUTIONS = ("480p", "720p", "1080p", "2160p")
+_SEASON_RE = re.compile(r"\.S\d{2}\.")
+_GROUP_UNSAFE_RE = re.compile(r"""[<>:"/\\|?*'`\-]""")
+
 NYAA_URL = "https://nyaa.si/view/{id}"
 NYAA_DOWNLOAD_URL = "https://nyaa.si/download/{id}.torrent"
 NEKOBT_URL = "https://nekobt.to/torrents/{id}"
@@ -38,6 +42,27 @@ def parse_issue_body(body: str) -> dict[str, str]:
         if value and value != "_No response_":
             result[key] = value
     return result
+
+
+def _sanitize_group(group: str) -> str:
+    s = _GROUP_UNSAFE_RE.sub("", group)
+    return re.sub(r"\s+", "", s).strip(".")
+
+
+def validate_filename(filename: str, tmdb_type: str, release_group: str) -> list[str]:
+    errs = []
+    if " " in filename:
+        errs.append("filename must use dots as separators, not spaces")
+    if ".." in filename:
+        errs.append("filename contains consecutive dots")
+    expected_suffix = f"-{_sanitize_group(release_group)}"
+    if not filename.endswith(expected_suffix):
+        errs.append(f"filename must end with `{expected_suffix}` to match the release group")
+    if not any(res in filename for res in VALID_RESOLUTIONS):
+        errs.append(f"filename must contain a resolution ({', '.join(VALID_RESOLUTIONS)})")
+    if tmdb_type == "show" and not _SEASON_RE.search(f".{filename}."):
+        errs.append("TV filename must contain a season tag (e.g. `.S01.`)")
+    return errs
 
 
 def load_community_file(path: Path) -> list[dict]:
@@ -116,6 +141,12 @@ def main() -> int:
     tvdb_season_raw = fields.get("tvdb_season", "1").strip()
 
     is_movie = bool(tmdb_id_raw) and not bool(tvdb_id_raw)
+    tmdb_type = "movie" if is_movie else "show"
+
+    filename_errs = validate_filename(filename, tmdb_type, release_group)
+    if filename_errs:
+        _fail("Invalid filename:\n" + "\n".join(f"- {e}" for e in filename_errs))
+        return 1
 
     if not is_movie and not tvdb_id_raw:
         _fail("TV release requires a TVDB ID.")
@@ -138,15 +169,14 @@ def main() -> int:
     if nekobt_link:
         entry["nekobt_link"] = nekobt_link
 
+    entry["tmdb_type"] = tmdb_type
     if is_movie:
         entry["tmdb_id"] = int(tmdb_id_raw)
-        entry["tmdb_type"] = "movie"
         file_key = f"tmdb-{tmdb_id_raw}"
     else:
         tvdb_season = int(tvdb_season_raw) if tvdb_season_raw.isdigit() else 1
         entry["tvdb_id"] = int(tvdb_id_raw)
         entry["tvdb_season"] = tvdb_season
-        entry["tmdb_type"] = "show"
         file_key = f"tvdb-{tvdb_id_raw}"
 
     COMMUNITY_DIR.mkdir(exist_ok=True)

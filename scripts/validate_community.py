@@ -10,18 +10,51 @@ Each file must be a JSON array of objects. Each object must have:
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
 REQUIRED_STR = ("filename", "tmdb_tvdb_name", "release_group", "tmdb_type", "processed_at")
 LINK_FIELDS = ("nyaa_link", "nekobt_link")
 VALID_TMDB_TYPES = ("movie", "show")
+VALID_RESOLUTIONS = ("480p", "720p", "1080p", "2160p")
 
 STR_FIELDS = (
     "filename", "tmdb_tvdb_name", "release_group", "tmdb_type", "processed_at",
     "nyaa_link", "nyaa_download_link", "nekobt_link",
 )
 INT_FIELDS = ("tvdb_id", "tvdb_season", "tmdb_id")
+
+_SEASON_RE = re.compile(r"\.S\d{2}\.")
+_GROUP_UNSAFE_RE = re.compile(r"""[<>:"/\\|?*'`\-]""")
+
+
+def _sanitize_group(group: str) -> str:
+    """Mirror sanitize_release_group from namer.rs."""
+    s = _GROUP_UNSAFE_RE.sub("", group)
+    return re.sub(r"\s+", "", s).strip(".")
+
+
+def validate_filename(filename: str, tmdb_type: str, release_group: str) -> list[str]:
+    errs = []
+    if " " in filename:
+        errs.append("filename must use dots as separators, not spaces")
+    if ".." in filename:
+        errs.append("filename contains consecutive dots")
+
+    expected_suffix = f"-{_sanitize_group(release_group)}"
+    if not filename.endswith(expected_suffix):
+        errs.append(
+            f"filename must end with -{_sanitize_group(release_group)!r} to match release_group"
+        )
+
+    if not any(res in filename for res in VALID_RESOLUTIONS):
+        errs.append(f"filename must contain a resolution ({', '.join(VALID_RESOLUTIONS)})")
+
+    if tmdb_type == "show" and not _SEASON_RE.search(f".{filename}."):
+        errs.append("TV filename must contain a season tag (e.g. .S01.)")
+
+    return errs
 
 
 def validate_obj(path: str, idx: int, obj: dict) -> list[str]:
@@ -36,9 +69,14 @@ def validate_obj(path: str, idx: int, obj: dict) -> list[str]:
         if not isinstance(val, str) or not val.strip():
             errs.append(f"{where}: missing or empty `{field}`")
 
+    if isinstance(filename, str) and filename.strip() and isinstance(release_group, str) and release_group.strip():
+        errs.extend(validate_filename(filename, tmdb_type, release_group))
+
     if not any(obj.get(k) for k in LINK_FIELDS):
         errs.append(f"{where}: must have at least one of: {', '.join(LINK_FIELDS)}")
 
+    filename = obj.get("filename", "")
+    release_group = obj.get("release_group", "")
     tmdb_type = obj.get("tmdb_type", "")
     if tmdb_type not in VALID_TMDB_TYPES:
         errs.append(f"{where}: `tmdb_type` must be one of {VALID_TMDB_TYPES}, got {tmdb_type!r}")
