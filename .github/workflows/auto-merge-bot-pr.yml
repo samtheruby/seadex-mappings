@@ -2,25 +2,34 @@ name: auto-merge-bot-pr
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [closed]
     branches: [main]
 
 permissions:
+  actions: write
   contents: write
-  pull-requests: write
 
 jobs:
-  merge:
+  trigger-build:
+    # Only run when the PR was actually merged (not just closed/declined),
+    # and only for bot ingest branches belonging to the repo owner.
     if: |
+      github.event.pull_request.merged == true &&
       startsWith(github.head_ref, 'bot/ingest-') &&
       github.event.pull_request.user.login == 'samtheruby'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
-      - name: Merge bot PR
+      - name: Dispatch build-db
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr merge "${{ github.event.pull_request.number }}" \
-            --squash --auto \
+          gh workflow run build-db.yml \
             --repo "${{ github.repository }}"
+
+      - name: Delete merged branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method DELETE \
+            "repos/${{ github.repository }}/git/refs/heads/${{ github.head_ref }}"
